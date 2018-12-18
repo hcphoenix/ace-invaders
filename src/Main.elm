@@ -94,8 +94,8 @@ background model =
             WebGL.entity vertCurvedBG
             fragTexturedOffset
             unitSquare
-            { transform = Shaders.makeTransform ( 0, 0, 1 ) 0 (1000, 1000) ( 0, 0 )   --both toFloat model.size
-            , cameraProj = M4.mul (M4.makePerspective 45 1.777 0.01 100) (M4.makeLookAt (vec3 1 0 0) (vec3 0 0 1)  (vec3 0 1 0) ) --Camera.view camera screenSize   
+            { transform = Shaders.makeTransform ( -0.5, -0.5, -1 ) 0 (1, 1) ( 0.1, 0.1 )   --both toFloat model.size
+            , cameraProj = M4.mul (M4.makePerspective 45 1.777 0.01 100) (M4.makeLookAt (vec3 0 0 1) (vec3 0 0 -1)  (vec3 0 1 0) ) --Camera.view camera screenSize   
             , u_bgTexture =  texture
             }
         )
@@ -111,7 +111,7 @@ uniform mat4 cameraProj;
 varying vec2 vcoord;
 void main () {
    
-    vec4 pos = cameraProj*transform*vec4(position,1, 1);
+    vec4 pos = cameraProj*transform*vec4(position.x,abs(position.y), abs(position.x) * abs(position.x),1);
     gl_Position = pos;
     vcoord = position.xy;
 }
