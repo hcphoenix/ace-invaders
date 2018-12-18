@@ -52,6 +52,7 @@ init =
 type Msg =
     Resize Int Int
     | Resources Resources.Msg
+    | Tick Float
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -62,9 +63,15 @@ update msg model =
             ( { model | resources = Resources.update rMsg model.resources }
             , Cmd.none )
 
+        Tick dt ->
+            ( { model | time = model.time + 1 }
+                --, camera = Camera.moveTo ( POSITION ) model.camera we can use this to do stuff 
+                , Cmd.none )
+
 subs : Model -> Sub Msg
 subs model = Sub.batch
     [ Events.onResize Resize
+    , Events.onAnimationFrameDelta ((\dt -> dt / 1000) >> Tick)
     ]
 
 view : Model -> Html Msg
@@ -94,9 +101,10 @@ background model =
             WebGL.entity vertCurvedBG
             fragTexturedOffset
             unitSquare
-            { transform = Shaders.makeTransform ( -0.5, -0.5, -1 ) 0 (1, 1) ( 0.1, 0.1 )   --both toFloat model.size
-            , cameraProj = M4.mul (M4.makePerspective 45 1.777 0.01 100) (M4.makeLookAt (vec3 0 0 1) (vec3 0 0 -1)  (vec3 0 1 0) ) --Camera.view camera screenSize   
+            { transform = Shaders.makeTransform ( -0.5, -0.5, -0.5 ) 0 (1, 1) ( 0.1, 0.1 )   --both toFloat model.size
+            , cameraProj = M4.mul (M4.makePerspective 90 1.777 0.01 100) (M4.makeLookAt (vec3 0 0 1) (vec3 0 0 -1)  (vec3 0 1 0) ) --Camera.view camera screenSize   
             , u_bgTexture =  texture
+            , u_time = model.time
             }
         )
         
@@ -110,37 +118,26 @@ uniform mat4 transform;
 uniform mat4 cameraProj;
 varying vec2 vcoord;
 void main () {
-   
-    vec4 pos = cameraProj*transform*vec4(position.x,abs(position.y), abs(position.x) * abs(position.x),1);
+    vec3 tempPos = vec3(position.x + position.y, position.y, (position.x));
+    vec4 pos = cameraProj*transform*vec4(tempPos,1);
     gl_Position = pos;
     vcoord = position.xy;
 }
 |]  
 
-fragTexturedOffset : Shader {} { u | u_bgTexture : Texture } { vcoord : Vec2 }
+fragTexturedOffset : Shader {} { u | u_bgTexture : Texture, u_time: Float} { vcoord : Vec2 }
 fragTexturedOffset =
     [glsl|
 precision mediump float;
+uniform float u_time;
 uniform sampler2D u_bgTexture;
 varying vec2 vcoord;
 void main () {
-    gl_FragColor = texture2D(u_bgTexture, vcoord);
+    vec2 fragPos = vec2( vcoord.x + u_time * 0.01,  vcoord.y);
+    vec4 tex=texture2D(u_bgTexture, fragPos);
+    gl_FragColor = tex;
 }
 |]
-
-        {-Render.shape
-    Render.rectangle
-        { color = Color.black
-        , position = (0,0)
-        , size = (800,600)
-        }   
-
-
-        
-    --List Renderable
-    [ --background <| both toFloat model.size
-    ]
-    -}
 
 blankBackground : (Float, Float) -> Renderable
 blankBackground size = Render.shape Render.rectangle
